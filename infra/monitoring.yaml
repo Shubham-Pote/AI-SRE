@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: prometheus, namespace: heal-demo}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: prometheus, namespace: heal-demo}
+rules:
+  - apiGroups: ['']
+    resources: [pods, services, endpoints]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: prometheus, namespace: heal-demo}
+subjects:
+  - {kind: ServiceAccount, name: prometheus, namespace: heal-demo}
+roleRef: {kind: Role, name: prometheus, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: prometheus, namespace: heal-demo}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: demo
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: {names: [heal-demo]}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: demo
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: '8080'
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: prometheus, namespace: heal-demo}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: prometheus}}
+  template:
+    metadata: {labels: {app: prometheus}}
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.2.1
+          args: ['--config.file=/etc/prometheus/prometheus.yml', '--storage.tsdb.retention.time=6h', '--storage.tsdb.retention.size=256MB']
+          ports: [{containerPort: 9090}]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 300m, memory: 384Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus}
+      volumes:
+        - name: config
+          configMap: {name: prometheus}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prometheus, namespace: heal-demo}
+spec:
+  type: NodePort
+  selector: {app: prometheus}
+  ports: [{port: 9090, targetPort: 9090, nodePort: 30090}]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: controller, namespace: heal-demo}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: controller, namespace: heal-demo}
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, delete]
+  - apiGroups: ['']
+    resources: [events]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [demo]
+    verbs: [get, patch]
+  - apiGroups: [apps]
+    resources: [deployments/scale]
+    resourceNames: [demo]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: controller, namespace: heal-demo}
+subjects:
+  - {kind: ServiceAccount, name: controller, namespace: heal-demo}
+roleRef: {kind: Role, name: controller, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: kube-state-metrics, namespace: heal-demo}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: kube-state-metrics, namespace: heal-demo}
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: kube-state-metrics, namespace: heal-demo}
+subjects:
+  - {kind: ServiceAccount, name: kube-state-metrics, namespace: heal-demo}
+roleRef: {kind: Role, name: kube-state-metrics, apiGroup: rbac.authorization.k8s.io}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: kube-state-metrics, namespace: heal-demo}
+spec:
+  selector: {matchLabels: {app: kube-state-metrics}}
+  template:
+    metadata: {labels: {app: kube-state-metrics}}
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.15.0
+          args: ['--namespaces=heal-demo','--resources=pods,deployments,replicasets']
+          ports: [{containerPort: 8080}]
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 96Mi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: kube-state-metrics, namespace: heal-demo}
+spec:
+  selector: {app: kube-state-metrics}
+  ports: [{port: 8080, targetPort: 8080}]

@@ -1,0 +1,49 @@
+x-logging: &bounded-logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "2"
+services:
+  api:
+    logging: *bounded-logs
+    image: heallab-control:local
+    command: uvicorn controller.api:app --host 0.0.0.0 --port 8000
+    environment:
+      KUBECONFIG: /app/data/kubeconfig
+      KUBE_CONTEXT: kind-heal-lab
+    networks: [default, kind]
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["./data:/app/data"]
+  worker:
+    logging: *bounded-logs
+    image: heallab-control:local
+    command: python -m controller.worker
+    environment:
+      KUBECONFIG: /app/data/kubeconfig
+      KUBE_CONTEXT: kind-heal-lab
+      PROMETHEUS_URL: http://heal-lab-control-plane:30090
+    volumes: ["./data:/app/data"]
+    networks: [default, kind]
+    restart: on-failure
+  console:
+    logging: *bounded-logs
+    image: heallab-control:local
+    command: streamlit run console/app.py --server.address 0.0.0.0 --server.port 8501 --browser.gatherUsageStats false
+    ports: ["127.0.0.1:8501:8501"]
+    environment: {CONTROLLER_URL: 'http://api:8000'}
+    depends_on: [api]
+  grafana:
+    logging: *bounded-logs
+    image: grafana/grafana:11.6.0
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [default, kind]
+networks:
+  kind:
+    external: true

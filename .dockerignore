@@ -1,0 +1,6 @@
+data/
+.tools/
+.git/
+.venv/
+Docs/
+**/__pycache__/

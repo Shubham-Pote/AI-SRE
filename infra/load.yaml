@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: traffic, namespace: heal-demo}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: traffic}}
+  template:
+    metadata: {labels: {app: traffic}}
+    spec:
+      containers:
+        - name: traffic
+          image: heallab-demo:local
+          imagePullPolicy: Never
+          command: [python, -u, -c]
+          args:
+            - |
+              import time, urllib.request, concurrent.futures
+              def request():
+                  try:
+                      urllib.request.urlopen('http://demo:8080/work',timeout=5).read()
+                  except Exception:
+                      pass
+              with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                  while True:
+                      pool.submit(request)
+                      time.sleep(.2)
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 64Mi}
