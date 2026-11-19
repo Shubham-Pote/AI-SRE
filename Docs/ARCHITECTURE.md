@@ -41,7 +41,7 @@ The worker polls every 15 seconds. Prometheus scrapes every 15 seconds. The work
 | Control API | `controller/api.py` | Status, history, incidents, mode, and demo fault endpoints |
 | Streamlit console | `console/app.py` | Live cards, charts, incident timeline, recovery mode and experiment controls |
 | Grafana | `infra/grafana/` | Provisioned dashboard and read-only anonymous viewer access |
-| React workspace | `Frontend/` | Bun/React/shadcn scaffold only; currently not connected to the HealLab API or Compose stack |
+| React control room | `Frontend/` | Overview, incident details, and experiment controls; local Bun proxy connects to FastAPI; launched separately from Compose |
 
 `compose.yaml` starts `api`, `worker`, `console`, and `grafana`. The API, worker, and console share `heallab-control:local`, built from `Dockerfile.control`. The demo image is built separately from `Dockerfile` and loaded into kind. The API is bound to localhost port 8000, Streamlit to 8501, and Grafana to 3000. The demo and Prometheus use kind NodePorts 30080 and 30090, reachable from containers on the kind Docker network.
 

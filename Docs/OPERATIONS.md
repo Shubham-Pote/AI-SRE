@@ -142,7 +142,7 @@ This stops Compose services and the kind control-plane container without deletin
 
 ## React workspace
 
-`Frontend/` is a Bun/React development scaffold with Tailwind, shadcn configuration, and GSAP dependencies. It currently displays a Bun/React sample with an API tester for its own `/api/hello` endpoint. It is **not** the operational HealLab console, is not started by Compose, and does not yet call the HealLab API. To inspect the scaffold independently:
+`Frontend/` is the React control room, with live telemetry, incident filtering and event details, recovery mode controls, and confirmed fault injection. It runs separately from Compose and proxies requests to the existing FastAPI service. Start the backend with the normal setup procedure, then run:
 
 ```powershell
 cd Frontend
@@ -150,4 +150,8 @@ bun install
 bun dev
 ```
 
-Use Streamlit at port 8501 for the implemented recovery controls. A React control room is a roadmap item.
+Open `http://localhost:5173`. The Bun server binds to localhost and forwards `/control/*` to `http://127.0.0.1:8000`; set `CONTROLLER_URL` before starting Bun to use a different API address. `PORT` can override 5173. The UI refreshes every five seconds while visible, displays connection failures, and disables mutations while disconnected. Recovery mode and fault changes require confirmation. Streamlit remains available on port 8501.
+
+The workspace scrolls independently within the visible browser height. Scrollbar rails are hidden; use the wheel, touch, or focus the workspace and press Page Down/End to navigate. Short windows keep the sidebar and dialogs independently scrollable. Controls use shadcn Button/Select; React Bits AnimatedContent and live metric transitions use GSAP with reduced-motion support.
+
+Run `bun run build` in `Frontend/` to verify the browser bundle. `bun start` serves the application and API proxy in production mode; a static `dist/` host alone does not supply the proxy. Browser checks on 19 November 2026 covered incident details, mode updates, fault cancellation, and a 390 px layout using temporary test responses. The live API was unavailable during these checks; cluster recovery was not exercised.

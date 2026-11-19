@@ -11,7 +11,7 @@
 | Safety | Observe mode, fresh-data checks, action allowlist, RBAC, post-action verification, restart reconciliation | Local API has no multi-user access control |
 | Incident record | SQLite incident/event timeline and console display | Latest 200 incidents exposed through API; no export/retention service |
 | ML | Optional Isolation Forest anomaly evidence and manual-review escalation; memory trend forecast | Exploratory baseline, no validated predictive accuracy or ML-driven actuation |
-| Interfaces | Operational Streamlit console, provisioned Grafana dashboard, FastAPI docs | React workspace is an unconnected scaffold |
+| Interfaces | React control room, Streamlit console, provisioned Grafana dashboard, FastAPI docs | React runs separately on port 5173; successful UI workflows were checked with browser fixtures while the live API was unavailable |
 | Validation tools | Unit/component tests, live smoke, action check, seeded load, reports, dataset collection/training | Three saved local smoke trials (two resolved, one escalated) and tool checks are not a comparative benchmark |
 
 The [ML and evaluation guide](ML_AND_EVALUATION.md#evidence-recorded-so-far) records the 18 November 2026 integration checks: 24 passing tests, a first observed automatic rollback, and the later saved smoke trials. The ignored local `data/live-smoke-*.json` files record three trials from that date: two verified resolutions and one `unknown_errors` escalation with no supported automatic action. The exact current test and cluster state should be checked again before a demonstration or report update.
@@ -26,7 +26,7 @@ The [ML and evaluation guide](ML_AND_EVALUATION.md#evidence-recorded-so-far) rec
 6. **Model evidence:** the model was trained on a small local healthy sample. Calibration is not a final independent test. The reported two-of-five fault-window replay cannot support sensitivity, precision, or generalization claims.
 7. **Experiment evidence:** two successful rollback smoke trials, one escalated trial, and action checks demonstrate behavior and a limit of diagnosis. Five independent trials per scenario, matched controls, HPA comparison, and cloud validation remain to be done.
 8. **Persistence and scale:** SQLite is appropriate for the single local worker; no distributed coordination, backups, migration tooling, or long-term retention are implemented. Recent in-memory history is lost on worker restart, though incidents persist.
-9. **Frontend:** `Frontend/` is a starter app and is not wired into Compose or the HealLab API. Streamlit is the actual control interface today.
+9. **Frontend:** the React control room connects to FastAPI through a local Bun proxy, but is not included in Compose. Live end-to-end validation with the running cluster remains necessary; browser fixture tests verify interaction behavior only.
 
 ## Next goals, in priority order
 
@@ -50,7 +50,7 @@ The [ML and evaluation guide](ML_AND_EVALUATION.md#evidence-recorded-so-far) rec
 
 ### Milestone 3 — Control room and operational hardening
 
-- Replace or complement the Streamlit console with a React control room that calls the existing API, including status, incidents, event details, mode, and controlled experiments.
+- Validate the implemented React control room against a running cluster and decide whether to include it in Compose or keep it as a separate development service.
 - Add a clear distinction among detected, observed, executing, verifying, resolved, and escalated incidents; handle stale telemetry and API errors in the UI.
 - Add API identity and authorization before any shared deployment, plus audit attribution, credential rotation, and safer experiment permissions.
 - Define data retention, backups, and migration strategy if moving beyond a local prototype.
