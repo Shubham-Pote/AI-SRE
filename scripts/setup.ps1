@@ -38,4 +38,6 @@ Remove-Item -LiteralPath data/admin-kubeconfig
 docker build -f Dockerfile.control -t heallab-control:local .; Check
 CheckSpace
 docker compose up -d; Check
+# Existing clients cache service-account credentials; reload the renewed token.
+docker compose restart api worker; Check
 Write-Host 'Console: http://localhost:8501 | Grafana: http://localhost:3000'

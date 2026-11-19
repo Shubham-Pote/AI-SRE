@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 import streamlit as st
 
@@ -7,6 +7,19 @@ st.set_page_config(page_title='HealLab | Infrastructure recovery',page_icon=':ma
 API=os.getenv('CONTROLLER_URL','http://127.0.0.1:8000')
 st.title('HealLab')
 st.caption('INFRASTRUCTURE OBSERVABILITY / DIAGNOSIS / VERIFIED RECOVERY')
+
+def history_chart(rows, field, label, color, divisor=1):
+    # Stable dataset names avoid Vega data-source errors during fragment refreshes.
+    name='history_'+field
+    values=[{'time':datetime.fromtimestamp(row['timestamp'],timezone.utc).isoformat(),
+             'value':row[field]/divisor} for row in rows]
+    st.vega_lite_chart(spec={
+        'data':{'name':name}, 'datasets':{name:values},
+        'mark':{'type':'line','color':color}, 'height':180,
+        'encoding':{'x':{'field':'time','type':'temporal','title':'Time'},
+                    'y':{'field':'value','type':'quantitative','title':label}},
+    },use_container_width=True,key=name)
+
 with st.sidebar:
     st.header('Control room')
     st.link_button('Open Grafana',os.getenv('GRAFANA_URL','http://localhost:3000/d/heallab'))
@@ -46,6 +59,7 @@ def dashboard():
     w=s['telemetry']
     st.subheader('Live workload overview')
     st.caption('Mode: '+s['mode'].upper()+' | Cluster: kind-heal-lab | Namespace: heal-demo')
+    st.caption('Rollback baseline available' if s.get('baseline_ready') else 'Establishing a healthy rollback baseline; wait before injecting a fault.')
     if s['stale']:
         st.warning('Telemetry is missing or stale. Automatic recovery requires fresh observations.')
     if s['worker_error']:
@@ -58,17 +72,13 @@ def dashboard():
         response.raise_for_status()
         rows=response.json()
         if rows:
-            import pandas as pd
-            frame=pd.DataFrame(rows)
-            frame['time']=pd.to_datetime(frame['timestamp'],unit='s')
             left,right=st.columns(2)
             with left:
                 st.caption('Recent p95 latency (seconds)')
-                st.line_chart(frame.set_index('time')[['latency']],height=180,color='#14b8a6')
+                history_chart(rows,'latency','Seconds','#14b8a6')
             with right:
                 st.caption('Recent memory (MiB)')
-                frame['memory_mib']=frame['memory']/1048576
-                st.line_chart(frame.set_index('time')[['memory_mib']],height=180,color='#60a5fa')
+                history_chart(rows,'memory','MiB','#60a5fa',1048576)
     except requests.RequestException:
         st.caption('History temporarily unavailable')
     a,b=st.columns(2)

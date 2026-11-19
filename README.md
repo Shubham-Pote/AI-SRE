@@ -2,6 +2,8 @@
 
 Local infrastructure monitoring, diagnosis and verified recovery for a final-year project.
 
+For the full project guide, start with [Docs/README.md](Docs/README.md). It links the architecture, recovery policy, operating procedures, API, ML evaluation, current limitations, and roadmap.
+
 ## Start on Windows
 
 Requires Docker Desktop running Linux containers, kubectl, PowerShell and internet access. Python runs in pinned Python 3.12 containers; the host Python 3.14 installation is not used. The setup script downloads kind into `.tools` and creates only the `heal-lab` cluster.
